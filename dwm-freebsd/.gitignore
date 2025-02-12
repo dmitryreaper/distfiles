@@ -1,5 +1,0 @@
-# ignore *.o files
-*.o
-
-# ignore dwm binary
-dwm
