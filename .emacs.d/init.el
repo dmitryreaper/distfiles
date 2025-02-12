@@ -1,6 +1,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;OPTIONAL SETTING;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (require 'package)
 (setq package-archives '(("melpa" . "https://melpa.org/packages/")
 						 ("org" . "https://orgmode.org/elpa/")
@@ -19,6 +20,8 @@
 ;;BASIC UI CONFIGURATION
 (setq inhibit-startup-message t)
 (setq initial-buffer-choice nil)
+(setq make-backup-files nil)
+(setq auto-save-default nil)
 
 (scroll-bar-mode -1)
 (tool-bar-mode -1)
@@ -42,22 +45,11 @@
 ;; Set up the visible bell
 (setq visible-bell t)
 
-;;colors CURSOR
+;;Color cursor
 (set-frame-parameter nil 'cursor-color "#ffffff")
 (add-to-list 'default-frame-alist '(cursor-color . "#ffffff"))
 
-;;line-numbers-mode off 
-(dolist (mode '(org-mode-hook
-                term-mode-hook
-                shell-mode-hook
-                treemacs-mode-hook
-				pdf-view-mode-hook
-                eshell-mode-hook
-				nov-mode-hook))
-  (add-hook mode (lambda () (display-line-numbers-mode 0))))
-
 ;;font
-;;(set-face-attribute 'default nil :font "Iosevka Nerd Font 12")
 (set-face-attribute 'default nil :font "Hack Nerd Font-11")
 
 ;;set "gnu" style for c
@@ -79,42 +71,19 @@
 (setq scroll-step 1)
 (setq scroll-conservatively 10000)
 (setq auto-window-vscroll nil)
+
 ;; Scroll Mouse
 (pixel-scroll-precision-mode t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAPPING;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;FUNCTIONS;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Настраиваем перемещение для русской раскладки
-(defun setup-ru-layout-keys ()
-  "Переназначить клавиши перемещения для русской раскладки."
-  (let ((key-remap '(
-                     ;; Перемещение
-                     ("C-а" . "C-f")  ;; Вперёд (forward-char)
-                     ("C-и" . "C-b")  ;; Назад (backward-char)
-                     ("C-т" . "C-n")  ;; Вниз (next-line)
-                     ("C-з" . "C-p")  ;; Вверх (previous-line)
-					 ("C-ф" . "C-a")  ;; В начало строки
-					 ("C-у" . "C-e")  ;; В конец строки
-                     ;; Удаление
-                     ("C-в" . "C-d")  ;; Удалить символ (delete-char)
-                     ("C-л" . "C-k")  ;; Удалить строку (kill-line)
-
-					 ;; Перемещение по словам
-                     ("M-а" . "M-f")  ;; перемещение по слову вмеред (kill-line)
-					 ("M-и" . "M-b")
-
-                     )))
-    (dolist (pair key-remap)
-      (define-key key-translation-map (kbd (car pair)) (kbd (cdr pair))))))
-
-(setup-ru-layout-keys)
-
-(global-set-key (kbd "C-M-p") 'windmove-up)
-(global-set-key (kbd "C-M-n") 'windmove-down)
-(global-set-key (kbd "C-M-b") 'windmove-left)
-(global-set-key (kbd "C-M-f") 'windmove-right)
+;; Whitespace mode
+(defun rc/set-up-whitespace-handling ()
+  (interactive)
+  (whitespace-mode 1)
+  (add-to-list 'write-file-functions 'delete-trailing-whitespace))
 
 ;;resize window
 (defun enlarge-vert ()
@@ -133,19 +102,17 @@
   (interactive)
   (enlarge-window-horizontally -4))
 
-(define-prefix-command 'my-mapping)
-(define-key my-mapping (kbd "C-c k") 'shrink-vert)
-(define-key my-mapping (kbd "C-c i") 'enlarge-vert)
-(define-key my-mapping (kbd "C-c j") 'shrink-horz)
-(define-key my-mapping (kbd "C-c l") 'enlarge-horz)
-
-(define-prefix-command 'window-resize-map)
-(global-set-key (kbd "C-x w") 'window-resize-map)
-
-(define-key window-resize-map (kbd "p") (lambda () (interactive) (enlarge-window 4)))
-(define-key window-resize-map (kbd "n") (lambda () (interactive) (enlarge-window -4)))
-(define-key window-resize-map (kbd "f") (lambda () (interactive) (enlarge-window-horizontally 4)))
-(define-key window-resize-map (kbd "b") (lambda () (interactive) (enlarge-window-horizontally -4)))
+(defun rc/duplicate-line ()
+  "Duplicate current line"
+  (interactive)
+  (let ((column (- (point) (point-at-bol)))
+        (line (let ((s (thing-at-point 'line t)))
+                (if s (string-remove-suffix "\n" s) ""))))
+    (move-end-of-line 1)
+    (newline)
+    (insert line)
+    (move-beginning-of-line 1)
+    (forward-char column)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;PACKAGES;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -162,6 +129,10 @@
   :config
   (doom-modeline-mode))
 
+;; multiple cursors
+(use-package multiple-cursors
+  :ensure t)
+
 ;; Company
 (use-package company
   :ensure t
@@ -171,19 +142,6 @@
 ;; Ivy and Counsel
 (use-package ivy
   :diminish
-  :bind (("C-s" . swiper)
-         :map ivy-minibuffer-map
-         ("TAB" . ivy-alt-done)
-         ("C-l" . ivy-alt-done)
-         ("C-j" . ivy-next-line)
-         ("C-k" . ivy-previous-line)
-         :map ivy-switch-buffer-map
-         ("C-k" . ivy-previous-line)
-         ("C-l" . ivy-done)
-         ("C-d" . ivy-switch-buffer-kill)
-         :map ivy-reverse-i-search-map
-         ("C-k" . ivy-previous-line)
-         ("C-d" . ivy-reverse-i-search-kill))
   :config
   (ivy-mode 1))
 
@@ -207,8 +165,7 @@
   :hook
   (c++-mode . lsp) 
   (java-mode . lsp)
-  (c-mode . lsp)
-  (js-mode . lsp))
+  (c-mode . lsp))
 
 (use-package lsp-ui
   :ensure t
@@ -244,16 +201,90 @@
   ;;(agenda   . 5)))
   (setq dashboard-banner-logo-title "Welcome to Emacs!"))
 
-;; pdf-tools
-(use-package pdf-tools
-  :ensure t
-  :config
-  (add-hook 'find-file-hook
-			(lambda ()
-              (when (string-match-p "\\.pdf$" buffer-file-name)
-				(pdf-tools-install)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAPPING;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Move window
+(global-set-key (kbd "C-M-p") 'windmove-up)
+(global-set-key (kbd "C-M-n") 'windmove-down)
+(global-set-key (kbd "C-M-b") 'windmove-left)
+(global-set-key (kbd "C-M-f") 'windmove-right)
+
+;; Resize buffers
+(define-prefix-command 'my-mapping)
+(define-key my-mapping (kbd "C-c k") 'shrink-vert)
+(define-key my-mapping (kbd "C-c i") 'enlarge-vert)
+(define-key my-mapping (kbd "C-c j") 'shrink-horz)
+(define-key my-mapping (kbd "C-c l") 'enlarge-horz)
+(define-prefix-command 'window-resize-map)
+(global-set-key (kbd "C-x w") 'window-resize-map)
+
+(define-key window-resize-map (kbd "p") (lambda () (interactive) (enlarge-window 8)))
+(define-key window-resize-map (kbd "n") (lambda () (interactive) (enlarge-window -8)))
+(define-key window-resize-map (kbd "f") (lambda () (interactive) (enlarge-window-horizontally 8)))
+(define-key window-resize-map (kbd "b") (lambda () (interactive) (enlarge-window-horizontally -8)))
+
+(global-set-key (kbd "C-S-c C-S-c") 'mc/edit-lines)
+(global-set-key (kbd "C->")         'mc/mark-next-like-this)
+(global-set-key (kbd "C-<")         'mc/mark-previous-like-this)
+(global-set-key (kbd "C-c C-<")     'mc/mark-all-like-this)
+(global-set-key (kbd "C-\"")        'mc/skip-to-next-like-this)
+(global-set-key (kbd "C-:")         'mc/skip-to-previous-like-this)
+
+;; Duplicate line
+(global-set-key (kbd "C-,") 'rc/duplicate-line)
+
+;; Ivy
+(global-set-key (kbd "C-s") 'swiper)
+(define-key ivy-minibuffer-map (kbd "TAB") 'ivy-alt-done)
+(define-key ivy-minibuffer-map (kbd "C-l") 'ivy-alt-done)
+(define-key ivy-minibuffer-map (kbd "C-j") 'ivy-next-line)
+(define-key ivy-minibuffer-map (kbd "C-k") 'ivy-previous-line)
+(define-key ivy-switch-buffer-map (kbd "C-k") 'ivy-previous-line)
+(define-key ivy-switch-buffer-map (kbd "C-l") 'ivy-done)
+(define-key ivy-switch-buffer-map (kbd "C-d") 'ivy-switch-buffer-kill)
+(define-key ivy-reverse-i-search-map (kbd "C-k") 'ivy-previous-line)
+(define-key ivy-reverse-i-search-map (kbd "C-d") 'ivy-reverse-i-search-kill)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;HOOKS;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; haskell
+(add-hook 'haskell-mode-hook #'lsp)
+(add-hook 'haskell-literate-mode-hook #'lsp)
+(add-hook 'haskell-interactive-switch #'lsp)
+
+;; whitespace
+(add-hook 'c++-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'c-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'emacs-lisp-mode 'rc/set-up-whitespace-handling)
+(add-hook 'lisp-mode 'rc/set-up-whitespace-handling)
+(add-hook 'java-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'lua-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'rust-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'scala-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'markdown-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'haskell-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'python-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'erlang-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'asm-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'fasm-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'go-mode-hook 'rc/set-up-whitespace-handling)
+(add-hook 'nim-mode-hook 'rc/set-up-whitespace-handling)
+
+;; line-numbers-mode off 
+(dolist (mode '(org-mode-hook
+                term-mode-hook
+                shell-mode-hook
+                treemacs-mode-hook
+				pdf-view-mode-hook
+                eshell-mode-hook
+				nov-mode-hook))
+  (add-hook mode (lambda () (display-line-numbers-mode 0))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
@@ -262,7 +293,7 @@
  ;; If there is more than one, they won't work right.
  '(initial-buffer-choice (lambda nil (get-buffer "*dashboard*")))
  '(package-selected-packages
-   '(sly pdf-tools annalist company counsel dashboard doom-modeline forge goto-chg gruber-darker-theme helm-core ivy-prescient ivy-rich llm lsp-java lsp-ui org-bullets org-pdftools org-present queue shell-maker wfnames))
+   '(multiple-cursors lsp-haskell haskell-mode annalist company counsel dashboard doom-modeline forge goto-chg gruber-darker-theme helm-core ivy-prescient ivy-rich llm lsp-java lsp-ui org-bullets org-pdftools org-present queue shell-maker wfnames))
  '(warning-suppress-log-types '((evil-collection))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
