@@ -117,9 +117,9 @@ myManageHook = composeAll
 -- The available layouts.  Note that each layout is separated by |||,
 -- which denotes layout choice.
 
-outerGaps    = 10
+outerGaps    = 0
 myGaps       = gaps [(U, outerGaps), (R, outerGaps), (L, outerGaps), (D, outerGaps)]
-addSpace     = renamed [CutWordsLeft 2] . spacing gap
+addSpace     = renamed [CutWordsLeft 0] . spacing gap
 tab          =  avoidStruts
                $ renamed [Replace "Tabbed"]
                $ addTopBar
@@ -279,17 +279,23 @@ myKeys conf@(XConfig {XMonad.modMask = modMask}) = M.fromList $
   -- Toggle current focus window to fullscreen
   , ((modMask, xK_f), sendMessage $ Toggle FULL)
 
-  -- Mute volume.
+  -- Mute/Unmute volume.
   , ((0, xF86XK_AudioMute),
-     spawn "amixer -q set Master toggle")
-
+     spawn "pactl set-sink-mute @DEFAULT_SINK@ toggle")
   -- Decrease volume.
   , ((0, xF86XK_AudioLowerVolume),
-     spawn "amixer -q set Master 5%-")
-
+     spawn "pactl set-sink-volume @DEFAULT_SINK@ -5%")
   -- Increase volume.
   , ((0, xF86XK_AudioRaiseVolume),
-     spawn "amixer -q set Master 5%+")
+     spawn "pactl set-sink-volume @DEFAULT_SINK@ +5%")
+
+    -- Decrease brightness.
+  , ((0, xF86XK_MonBrightnessDown),
+     spawn "xbacklight -dec 10")  -- Используйте "-inc" для light
+
+  -- Increase brightness.
+  , ((0, xF86XK_MonBrightnessUp),
+     spawn "xbacklight -inc 10")  -- Используйте "+10" для light
 
   --------------------------------------------------------------------
   -- "Standard" xmonad key bindings
@@ -471,7 +477,7 @@ myStartupHook = do
   setWMName "xmonad"
   spawn "killall polybar; sleep 1; polybar &"
   spawn "picom --daemon"
-  spawn "feh --bg-scale /home/dima/Pictures/1.jpeg"
+  spawn "feh --bg-scale /home/dima/Pictures/1.png"
   setDefaultCursor xC_left_ptr
 
 ------------------------------------------------------------------------
